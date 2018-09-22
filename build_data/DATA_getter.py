@@ -115,13 +115,17 @@ def get_matches_detail():
     matches=np.load('matches_ids.npy')
     for match_id in matches:
         match = api.get_match_details(match_id=match_id)
-        if match['duration']<1500:
-            continue
-        if match['human_players']!=10:
-            continue
-        if match['game_mode'] not in [0,1,3]:
-            continue
-        if match['lobby_type'] not in [0,7,2]:
+        try:
+            if match['duration']<1500:
+                continue
+            if match['human_players']!=10:
+                continue
+            if match['game_mode'] not in [0,1,3]:
+                continue
+            if match['lobby_type'] not in [0,7,2]:
+                continue
+        except:
+            print('key error')
             continue
         players=match['players']
         leave_flag=False
