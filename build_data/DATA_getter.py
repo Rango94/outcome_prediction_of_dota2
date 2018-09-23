@@ -3,7 +3,7 @@ import random as rd
 import numpy as np
 api=dota2api.Initialise('EFB29011FFD46B347C9E9DEE8A1F4252')
 
-his=api.get_match_history(account_id=168028715,start_at_match_id=4059082885,matches_requested=100)
+# his=api.get_match_history(account_id=168028715,start_at_match_id=4059082885,matches_requested=100)
 # for key in his:
 #     print(key)
 #
@@ -113,9 +113,10 @@ def get_matches():
 def get_matches_detail():
     fo=open('matches_detail','w',encoding='utf-8')
     matches=np.load('matches_ids.npy')
-    for match_id in matches:
-        match = api.get_match_details(match_id=match_id)
+    for idx,match_id in enumerate(matches):
+
         try:
+            match = api.get_match_details(match_id=match_id)
             if match['duration']<1500:
                 continue
             if match['human_players']!=10:
@@ -154,7 +155,8 @@ def get_matches_detail():
                 radiant=[str(i[0]) for i in sorted(zip(radiant,radiant_prior),key=lambda x:x[1])]
                 dire =[str(i[0]) for i in  sorted(zip(dire, dire_prior), key=lambda x: x[1])]
 
-                fo.write(' '.join([' '.join(radiant),' '.join(dire),str(radiant_win)]))
+                fo.write(' '.join([str(match_id),' '.join(radiant),' '.join(dire),str(radiant_win)])+'\n')
+                print(match_id,idx)
                 # print(' '.join([' '.join(radiant),' '.join(dire),str(radiant_win)]))
             except:
                 print('match error')
