@@ -6,12 +6,15 @@ from data_helper import data_helper
 
 class dota2model:
     def __init__(self,config):
-        self.hero_cont=108
+        self.hero_cont=130
         self.hidden_size=config['hidden_size']
+        self.MAX_GRAD_NORM=config['MAX_GRAD_NORM']
+        self.LR=config['LR']
         self.build_placeholder()
         self.build_para()
         self.forward()
         self.computer_loss()
+        self._train()
 
     def build_placeholder(self):
         self.x_input=tf.placeholder(dtype=tf.int32,shape=[None,10],name='x_input')
@@ -75,27 +78,47 @@ class dota2model:
 
 
     def computer_loss(self):
-        y_std = tf.reshape(self.y_std, shape=[-1, 1])
-        y_pre = tf.reshape(self.y_pre, shape=[-1, 1])
+        y_std = tf.reshape(self.y_std, shape=[-1,1])
+        y_pre = tf.reshape(self.y_pre, shape=[-1,1])
 
         tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w1))
         tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w2))
         tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w3))
 
-        tf.add_to_collection("losses",-tf.reduce_sum((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) + (1 - y_std))* tf.log(tf.clip_by_value(1 - y_pre, 1e-10, 1.0))))
-
+        tf.add_to_collection("losses",
+                             -tf.reduce_sum((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
+                                             (1.- y_std)* tf.log(tf.clip_by_value(1. - y_pre, 1e-10, 1.0)))))
         self.loss = tf.add_n(tf.get_collection("losses"))
+
+    def _train(self):
+        trainable_variables = tf.trainable_variables()
+        grads = tf.gradients(self.loss, trainable_variables)
+        grads, _ = tf.clip_by_global_norm(grads, self.MAX_GRAD_NORM)
+        opt = tf.train.AdadeltaOptimizer(learning_rate=self.LR)
+        self.train_op = opt.apply_gradients(zip(grads, trainable_variables))
 
 
 if __name__=='__main__':
-    config={'hidden_size':256}
+
+    config={'hidden_size':256,
+            'MAX_GRAD_NORM':5,
+            'LR':0.3}
     model=dota2model(config)
 
     sess = tf.InteractiveSession()
     sess.run(tf.global_variables_initializer())
-    print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
-                                                                        [11,12,13,14,15,16,17,18,19,20]]),
-                                          model.y_std:np.array([0,1])}))
+    dh_config={'train_file':'../build_data/matches_detail'}
+
+    dh=data_helper(dh_config)
+
+    for i in range(100000):
+        train_x,train_y=dh.next_batch(1000)
+        print(sess.run([model.loss,model.train_op], feed_dict={model.x_input: train_x,
+                                              model.y_std: train_y}))
+
+        # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
+        #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
+        #                                   model.y_std:np.array([0,1])}))
 
 
 
