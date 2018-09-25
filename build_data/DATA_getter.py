@@ -111,10 +111,16 @@ def get_matches():
 
 
 def get_matches_detail():
-    fo=open('matches_detail','w',encoding='utf-8')
+    with open('matches_detail','r',encoding='utf-8') as fo:
+        all=fo.readlines()
+        match_ids_flag=int(all[-1].split(' ')[0])
     matches=np.load('matches_ids.npy')
     for idx,match_id in enumerate(matches):
-
+        if match_ids_flag:
+            print(match_id)
+            if match_id == match_ids_flag:
+                match_ids_flag=False
+            continue
         try:
             match = api.get_match_details(match_id=match_id)
             if match['duration']<1500:
@@ -154,8 +160,8 @@ def get_matches_detail():
 
                 radiant=[str(i[0]) for i in sorted(zip(radiant,radiant_prior),key=lambda x:x[1])]
                 dire =[str(i[0]) for i in  sorted(zip(dire, dire_prior), key=lambda x: x[1])]
-
-                fo.write(' '.join([str(match_id),' '.join(radiant),' '.join(dire),str(radiant_win)])+'\n')
+                with open('matches_detail', 'a', encoding='utf-8') as fo:
+                    fo.write(' '.join([str(match_id),' '.join(radiant),' '.join(dire),str(radiant_win)])+'\n')
                 print(match_id,idx)
                 # print(' '.join([' '.join(radiant),' '.join(dire),str(radiant_win)]))
             except:
