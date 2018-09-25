@@ -1,6 +1,8 @@
+#!/usr/bin/env python
 import tensorflow as tf
 import numpy as np
 import random as rd
+from data_helper import data_helper
 
 class dota2model:
     def __init__(self,config):

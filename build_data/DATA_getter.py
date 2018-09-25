@@ -1,6 +1,8 @@
 import dota2api
 import random as rd
 import numpy as np
+import eventlet
+
 api=dota2api.Initialise('EFB29011FFD46B347C9E9DEE8A1F4252')
 
 # his=api.get_match_history(account_id=168028715,start_at_match_id=4059082885,matches_requested=100)
@@ -111,9 +113,13 @@ def get_matches():
 
 
 def get_matches_detail():
-    with open('matches_detail','r',encoding='utf-8') as fo:
-        all=fo.readlines()
-        match_ids_flag=int(all[-1].split(' ')[0])
+    try:
+        with open('matches_detail','r',encoding='utf-8') as fo:
+            all=fo.readlines()
+            match_ids_flag=int(all[-1].split(' ')[0])
+    except:
+        match_ids_flag=False
+
     matches=np.load('matches_ids.npy')
     for idx,match_id in enumerate(matches):
         if match_ids_flag:
@@ -122,17 +128,25 @@ def get_matches_detail():
                 match_ids_flag=False
             continue
         try:
-            match = api.get_match_details(match_id=match_id)
+            match=False
+            with eventlet.Timeout(2, False):
+                match = api.get_match_details(match_id=match_id)
+            if not match:
+                print("\033[0;31m%s\033[0m" %'get match details timeout')
+                continue
             if match['duration']<1500:
+                print("\033[0;31m%s\033[0m" % (str(match_id)+':duration='+str(match['duration'])))
                 continue
             if match['human_players']!=10:
+                print("\033[0;31m%s\033[0m" % (str(match_id)+ ':human_players='+str(match['human_players'])))
                 continue
-            if match['game_mode'] not in [0,1,3]:
+            if match['game_mode'] not in [1,3,2,22]:
+                print("\033[0;31m%s\033[0m" % (str(match_id)+':game_mode='+str(match['game_mode'])))
                 continue
             if match['lobby_type'] not in [0,7,2]:
+                print("\033[0;31m%s\033[0m" % (str(match_id)+':lobby_type='+str(match['lobby_type'])))
                 continue
         except:
-            print('key error')
             continue
         players=match['players']
         leave_flag=False
@@ -141,6 +155,7 @@ def get_matches_detail():
                 leave_flag=True
                 continue
         if leave_flag:
+            print("\033[0;31m%s\033[0m" % ('someone has AFK'))
             continue
         else:
             try:
