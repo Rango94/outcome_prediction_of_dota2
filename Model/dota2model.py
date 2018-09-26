@@ -110,12 +110,13 @@ if __name__=='__main__':
     dh_config={'train_file':'../build_data/matches_detail'}
 
     dh=data_helper(dh_config)
-
+    saver = tf.train.Saver()
     for i in range(100000):
         train_x,train_y=dh.next_batch(1000)
-        print(sess.run([model.loss,model.train_op], feed_dict={model.x_input: train_x,
-                                              model.y_std: train_y}))
-
+        if i%100==0:
+            print(sess.run([model.loss, model.train_op], feed_dict={model.x_input: train_x,
+                                                                    model.y_std: train_y}))
+            saver.save(sess, 'dota2model')
         # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
         #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
         #                                   model.y_std:np.array([0,1])}))
