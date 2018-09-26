@@ -151,11 +151,16 @@ def get_matches_detail():
         players=match['players']
         leave_flag=False
         for player in players:
-            if player['leaver_status']!=0:
-                leave_flag=True
+            try:
+                if player['leaver_status']!=0:
+                    leave_flag=True
+                    print("\033[0;31m%s\033[0m" % ('someone has AFK'))
+                    continue
+            except:
+                print("\033[0;31m%s\033[0m" % ('key error "leaver_status"'))
+                leave_flag = True
                 continue
         if leave_flag:
-            print("\033[0;31m%s\033[0m" % ('someone has AFK'))
             continue
         else:
             try:
