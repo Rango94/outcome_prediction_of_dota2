@@ -1,7 +1,6 @@
 import dota2api
 import random as rd
 import numpy as np
-import eventlet
 
 api=dota2api.Initialise('EFB29011FFD46B347C9E9DEE8A1F4252')
 
@@ -128,11 +127,10 @@ def get_matches_detail():
                 match_ids_flag=False
             continue
         try:
-            match=False
-            with eventlet.Timeout(2, False):
+            try:
                 match = api.get_match_details(match_id=match_id)
-            if not match:
-                print("\033[0;31m%s\033[0m" %'get match details timeout')
+            except:
+                print("\033[0;31m%s\033[0m" % (str(match_id) + 'timeout'))
                 continue
             if match['duration']<1500:
                 print("\033[0;31m%s\033[0m" % (str(match_id)+':duration='+str(match['duration'])))
