@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import tensorflow as tf
-import numpy as np
-import random as rd
 from data_helper import data_helper
+from functions import *
 
 class dota2model:
     def __init__(self,config):
@@ -10,6 +9,7 @@ class dota2model:
         self.hidden_size=config['hidden_size']
         self.MAX_GRAD_NORM=config['MAX_GRAD_NORM']
         self.LR=config['LR']
+        self.attention_flag=config['attention_flag']
         self.build_placeholder()
         self.build_para()
         self.forward()
@@ -25,7 +25,17 @@ class dota2model:
         with tf.variable_scope('embedding',initializer=initializer):
             self.embedding = tf.get_variable(name='emb',dtype=tf.float32, shape=[self.hero_cont, self.hidden_size])
         with tf.variable_scope('attention',initializer=initializer):
-            self.attention_weight=tf.get_variable(name='attention_weight',dtype=tf.float32,shape=[self.hidden_size,self.hidden_size])
+            if self.attention_flag==1:
+                self.attention_weight=tf.get_variable(name='attention_weight',dtype=tf.float32,shape=[self.hidden_size,self.hidden_size])
+
+            elif self.attention_flag==2:
+                self.attention_weight_1=tf.get_variable(name='attention_weight_1',dtype=tf.float32,shape=[self.hidden_size*6,self.hidden_size*3])
+                self.attention_weight_2=tf.get_variable(name='attention_weight_2',dtype=tf.float32,shape=[self.hidden_size*3,self.hidden_size*2])
+                self.attention_weight_3=tf.get_variable(name='attention_weight_3',dtype=tf.float32,shape=[self.hidden_size*2,self.hidden_size])
+                self.att_b1=tf.get_variable(name='att_b1',dtype=tf.float32,shape=[self.hidden_size*3])
+                self.att_b2 = tf.get_variable(name='att_b2', dtype=tf.float32, shape=[self.hidden_size * 2])
+                self.att_b3 = tf.get_variable(name='att_b3', dtype=tf.float32, shape=[self.hidden_size])
+
         with tf.variable_scope('output_layers'):
             self.w1=tf.get_variable(name='w1',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
             self.w2=tf.get_variable(name='w2',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
@@ -35,29 +45,80 @@ class dota2model:
             self.b3=tf.get_variable(name='b3',dtype=tf.float32,shape=[1])
 
     def forward(self):
-        x_input_embedding=tf.nn.embedding_lookup(self.embedding,self.x_input)
+        self.x_input_embedding=tf.nn.embedding_lookup(self.embedding,self.x_input)
+        if self.attention_flag==1:
+            self.attention_1()
+        elif self.attention_flag==2:
+            self.attention_2()
+        tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
+        tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
+        self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
+
+    def attention_2(self):
         attentioned_list=[]
         for i in range(10):
+            '''
+            tmp = self.x_input_embedding[:, i, :]
+            tmp1 = self.x_input_embedding[:, 5:, :]
+            tmp3 = tf.concat([tmp, tmp1], axis=1)
+            tmp4 = tf.nn.relu(tf.matmul(tmp3, self.attention_weight_1) + self.att_b1)
+            tmp5 = tf.nn.relu(tf.matmul(tmp4, self.attention_weight_2) + self.att_b2)
+            tmp6 = tf.matmul(tmp5, self.attention_weight_3) + self.att_b3
+            attentioned_list.append(tmp6)
+            '''
             if i<5:
-                # tmp=tf.transpose(tf.matmul(x_input_embedding[:,i,:],self.attention_weight))
-                # tmp = tf.matmul(x_input_embedding[:,5:, :], tf.reshape(tmp,shape=[-1,self.hidden_size,1]))
-                # tmp=tf.reshape(tmp,shape=[-1,1,5])
-                # tmp=tf.nn.softmax(tmp,axis=2)
-                # tmp=tf.matmul(tmp,x_input_embedding[:,5:,:])
-                # tmp=tf.reshape(tmp,shape=[-1,self.hidden_size])
-                # attentioned_list.append(tmp)
+                attentioned_list.append(
+                    tf.matmul(
+                        tf.nn.relu(
+                            tf.matmul(
+                                tf.nn.relu(
+                                    tf.matmul(
+                                        tf.concat(
+                                            [self.x_input_embedding[:, i, :], tf.reshape(self.x_input_embedding[:, 5:, :],shape=[-1,self.hidden_size*5])],
+                                            axis=1),
+                                        self.attention_weight_1) + self.att_b1),
+                                self.attention_weight_2) + self.att_b2),
+                        self.attention_weight_3) + self.att_b3)
+            else:
+                attentioned_list.append(
+                    tf.matmul(
+                        tf.nn.relu(
+                            tf.matmul(
+                                tf.nn.relu(
+                                    tf.matmul(
+                                        tf.concat(
+                                            [self.x_input_embedding[:, i, :], tf.reshape(self.x_input_embedding[:, :5, :],shape=[-1,self.hidden_size*5])],
+                                            axis=1),
+                                        self.attention_weight_1) + self.att_b1),
+                                self.attention_weight_2) + self.att_b2),
+                        self.attention_weight_3) + self.att_b3)
+        self.attentioned_output = tf.concat(attentioned_list, 1)
+
+    def attention_1(self):
+        attentioned_list = []
+        for i in range(10):
+            if i < 5:
+                '''
+                tmp=tf.transpose(tf.matmul(x_input_embedding[:,i,:],self.attention_weight))
+                tmp = tf.matmul(x_input_embedding[:,5:, :], tf.reshape(tmp,shape=[-1,self.hidden_size,1]))
+                tmp=tf.reshape(tmp,shape=[-1,1,5])
+                tmp=tf.nn.softmax(tmp,axis=2)
+                tmp=tf.matmul(tmp,x_input_embedding[:,5:,:])
+                tmp=tf.reshape(tmp,shape=[-1,self.hidden_size])
+                attentioned_list.append(tmp)
+                '''
                 attentioned_list.append(
                     tf.reshape(
                         tf.matmul(
                             tf.nn.softmax(
                                 tf.reshape(
                                     tf.matmul(
-                                        x_input_embedding[:, 5:, :], tf.reshape(
+                                        self.x_input_embedding[:, 5:, :], tf.reshape(
                                             tf.transpose(
                                                 tf.matmul(
-                                                    x_input_embedding[:, i, :], self.attention_weight))
+                                                    self.x_input_embedding[:, i, :], self.attention_weight))
                                             , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]), axis=2)
-                            , x_input_embedding[:, 5:, :]), shape=[-1, self.hidden_size]))
+                            , self.x_input_embedding[:, 5:, :]), shape=[-1, self.hidden_size]))
             else:
                 attentioned_list.append(
                     tf.reshape(
@@ -65,17 +126,13 @@ class dota2model:
                             tf.nn.softmax(
                                 tf.reshape(
                                     tf.matmul(
-                                        x_input_embedding[:, :5, :], tf.reshape(
+                                        self.x_input_embedding[:, :5, :], tf.reshape(
                                             tf.transpose(
                                                 tf.matmul(
-                                                    x_input_embedding[:, i, :], self.attention_weight))
+                                                    self.x_input_embedding[:, i, :], self.attention_weight))
                                             , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]), axis=2)
-                            , x_input_embedding[:, :5, :]), shape=[-1, self.hidden_size]))
-        attentioned_output=tf.concat(attentioned_list,1)
-        tmp1=tf.nn.relu(tf.matmul(attentioned_output,self.w1)+self.b1)
-        tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
-        self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
-
+                            , self.x_input_embedding[:, :5, :]), shape=[-1, self.hidden_size]))
+        self.attentioned_output = tf.concat(attentioned_list, 1)
 
     def computer_loss(self):
         y_std = tf.reshape(self.y_std, shape=[-1,1])
@@ -86,8 +143,9 @@ class dota2model:
         tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w3))
 
         tf.add_to_collection("losses",
-                             -tf.reduce_sum((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
+                             -tf.reduce_mean((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
                                              (1.- y_std)* tf.log(tf.clip_by_value(1. - y_pre, 1e-10, 1.0)))))
+
         self.loss = tf.add_n(tf.get_collection("losses"))
 
     def _train(self):
@@ -102,21 +160,28 @@ if __name__=='__main__':
 
     config={'hidden_size':256,
             'MAX_GRAD_NORM':5,
-            'LR':0.3}
+            'LR':0.3,
+            'attention_flag':2}
     model=dota2model(config)
 
     sess = tf.InteractiveSession()
     sess.run(tf.global_variables_initializer())
+
     dh_config={'train_file':'../build_data/matches_detail'}
 
     dh=data_helper(dh_config)
+
     saver = tf.train.Saver()
     for i in range(100000):
         train_x,train_y=dh.next_batch(1000)
         if i%100==0:
-            print(sess.run([model.loss, model.train_op], feed_dict={model.x_input: train_x,
-                                                                    model.y_std: train_y}))
-            saver.save(sess, 'dota2model')
+            sess.run(model.train_op, feed_dict={model.x_input: train_x,
+                                                              model.y_std: train_y})
+
+            test_x, test_y = dh.get_test_batch()
+            print(sess.run(model.loss, feed_dict={model.x_input: test_x,
+                                                                    model.y_std: test_y}))
+            # saver.save(sess, 'dota2model')
         # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
         #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
         #                                   model.y_std:np.array([0,1])}))

@@ -120,6 +120,7 @@ def get_matches_detail():
         match_ids_flag=False
 
     matches=np.load('matches_ids.npy')
+    num=len(matches)
     for idx,match_id in enumerate(matches):
         if match_ids_flag:
             print(match_id)
@@ -180,7 +181,7 @@ def get_matches_detail():
                 dire =[str(i[0]) for i in  sorted(zip(dire, dire_prior), key=lambda x: x[1])]
                 with open('matches_detail', 'a', encoding='utf-8') as fo:
                     fo.write(' '.join([str(match_id),' '.join(radiant),' '.join(dire),str(radiant_win)])+'\n')
-                print(match_id,idx)
+                print(match_id,'%.6f'%(idx/num))
                 # print(' '.join([' '.join(radiant),' '.join(dire),str(radiant_win)]))
             except:
                 print('match error')
