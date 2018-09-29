@@ -21,15 +21,29 @@ class data_helper:
             data=np.array(data)
             self.train_x=data[:,:-1]
             self.train_y=data[:,-1]
-        #
-        # with open(config['test_file'],'r',encoding='utf-8') as test_file:
-        #     data = []
-        #     for line in test_file.readlines():
-        #         data.append([int(i) for i in line.rstrip().split(' ')[1:]])
-        #     data = np.array(data)
-        #     self.test_x = data[:, :-1]
-        #     self.test_y = data[:, -1]
-        self.start=2000
+
+        with open(config['test_file'],'r',encoding='utf-8') as test_file:
+            data = []
+            for line in test_file.readlines():
+                data.append([int(i) for i in line.rstrip().split(' ')[1:]])
+            data = np.array(data)
+            self.test_x = data[:, :-1]
+            self.test_y = data[:, -1]
+
+        with open(config['val_file'], 'r', encoding='utf-8') as val_file:
+            data = []
+            for line in val_file.readlines():
+                data.append([int(i) for i in line.rstrip().split(' ')[1:]])
+            data = np.array(data)
+            self.val_x = data[:, :-1]
+            self.val_y = data[:, -1]
+
+        self.start = 0
+
+
+        self.start=0
+
+
 
 
 
@@ -40,17 +54,17 @@ class data_helper:
 
         self.start+=size
         if self.start>len(self.train_x):
-            self.start=2000
+            self.start=0
 
         return train_x,train_y
 
 
     def get_test_batch(self):
+        return self.test_x, self.test_y
 
-        train_x = self.train_x[:2000]
-        train_y = self.train_y[:2000]
 
-        return train_x, train_y
+    def get_val_batch(self):
+        return self.val_x, self.val_y
 
 
 

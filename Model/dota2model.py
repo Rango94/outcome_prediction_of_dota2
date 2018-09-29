@@ -167,7 +167,10 @@ if __name__=='__main__':
     sess = tf.InteractiveSession()
     sess.run(tf.global_variables_initializer())
 
-    dh_config={'train_file':'../build_data/matches_detail'}
+    dh_config={'train_file':'../build_data/data_train',
+               'test_file':'../build_data/data_test',
+               'val_file': '../build_data/data_val'
+               }
 
     dh=data_helper(dh_config)
 
@@ -178,9 +181,9 @@ if __name__=='__main__':
             sess.run(model.train_op, feed_dict={model.x_input: train_x,
                                                               model.y_std: train_y})
 
-            test_x, test_y = dh.get_test_batch()
-            print(sess.run(model.loss, feed_dict={model.x_input: test_x,
-                                                                    model.y_std: test_y}))
+            val_x, val_y = dh.get_val_batch()
+            print(sess.run(model.loss, feed_dict={model.x_input: val_x,
+                                                  model.y_std: val_y}))
             # saver.save(sess, 'dota2model')
         # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
         #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
