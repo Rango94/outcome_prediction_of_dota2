@@ -22,7 +22,7 @@ class data_helper:
             self.train_x=data[:,:-1]
             self.train_y=data[:,-1]
 
-        with open(config['test_file'],'r',encoding='utf-8') as test_file:
+        with codecs.open(config['test_file'],'r',encoding='utf-8') as test_file:
             data = []
             for line in test_file.readlines():
                 data.append([int(i) for i in line.rstrip().split(' ')[1:]])
@@ -30,7 +30,7 @@ class data_helper:
             self.test_x = data[:, :-1]
             self.test_y = data[:, -1]
 
-        with open(config['val_file'], 'r', encoding='utf-8') as val_file:
+        with codecs.open(config['val_file'], 'r', encoding='utf-8') as val_file:
             data = []
             for line in val_file.readlines():
                 data.append([int(i) for i in line.rstrip().split(' ')[1:]])

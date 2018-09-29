@@ -2,7 +2,7 @@
 import tensorflow as tf
 from data_helper import data_helper
 from functions import *
-
+import numpy as np
 class dota2model:
     def __init__(self,config):
         self.hero_cont=130
@@ -17,11 +17,11 @@ class dota2model:
         self._train()
 
     def build_placeholder(self):
-        self.x_input=tf.placeholder(dtype=tf.int32,shape=[None,10],name='x_input')
+        self.x_input=tf.placeholder(dtype=tf.int64,shape=[None,10],name='x_input')
         self.y_std=tf.placeholder(dtype=tf.float32,shape=[None],name='y_std')
 
     def build_para(self):
-        initializer = tf.random_uniform_initializer(-0.5, 0.5)
+        initializer = tf.random_uniform_initializer(-0.25, 0.25)
         with tf.variable_scope('embedding',initializer=initializer):
             self.embedding = tf.get_variable(name='emb',dtype=tf.float32, shape=[self.hero_cont, self.hidden_size])
         with tf.variable_scope('attention',initializer=initializer):
@@ -46,10 +46,12 @@ class dota2model:
 
     def forward(self):
         self.x_input_embedding=tf.nn.embedding_lookup(self.embedding,self.x_input)
+
         if self.attention_flag==1:
             self.attention_1()
         elif self.attention_flag==2:
             self.attention_2()
+
         tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
         tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
         self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
@@ -69,22 +71,22 @@ class dota2model:
             if i<5:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.relu(
+                        tf.nn.tanh(
                             tf.matmul(
-                                tf.nn.relu(
+                                tf.nn.tanh(
                                     tf.matmul(
                                         tf.concat(
                                             [self.x_input_embedding[:, i, :], tf.reshape(self.x_input_embedding[:, 5:, :],shape=[-1,self.hidden_size*5])],
                                             axis=1),
                                         self.attention_weight_1) + self.att_b1),
                                 self.attention_weight_2) + self.att_b2),
-                        self.attention_weight_3) + self.att_b3)
+                        self.attention_weight_3)+ self.att_b3)
             else:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.relu(
+                        tf.nn.tanh(
                             tf.matmul(
-                                tf.nn.relu(
+                                tf.nn.tanh(
                                     tf.matmul(
                                         tf.concat(
                                             [self.x_input_embedding[:, i, :], tf.reshape(self.x_input_embedding[:, :5, :],shape=[-1,self.hidden_size*5])],
@@ -138,9 +140,9 @@ class dota2model:
         y_std = tf.reshape(self.y_std, shape=[-1,1])
         y_pre = tf.reshape(self.y_pre, shape=[-1,1])
 
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w1))
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w2))
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w3))
+        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w1))
+        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w2))
+        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w3))
 
         tf.add_to_collection("losses",
                              -tf.reduce_mean((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
@@ -150,11 +152,29 @@ class dota2model:
 
     def _train(self):
         trainable_variables = tf.trainable_variables()
+
         grads = tf.gradients(self.loss, trainable_variables)
-        grads, _ = tf.clip_by_global_norm(grads, self.MAX_GRAD_NORM)
+        # grads, _ = tf.clip_by_global_norm(grads, self.MAX_GRAD_NORM)
         opt = tf.train.AdadeltaOptimizer(learning_rate=self.LR)
         self.train_op = opt.apply_gradients(zip(grads, trainable_variables))
 
+
+
+
+
+def pre(pre_socre,truth):
+    pre_socre=np.reshape(pre_socre,[-1])
+    truth=np.reshape(truth,[-1])
+    sum=0
+    c=0
+    for i,j in zip(pre_socre,truth):
+        if c<30:
+            print(i,j)
+            c+=1
+        i=int(i+0.5)
+        if int(i)==int(j):
+            sum=sum+1
+    return sum/float(len(pre_socre))
 
 if __name__=='__main__':
 
@@ -162,32 +182,35 @@ if __name__=='__main__':
             'MAX_GRAD_NORM':5,
             'LR':0.3,
             'attention_flag':2}
-    model=dota2model(config)
 
-    sess = tf.InteractiveSession()
-    sess.run(tf.global_variables_initializer())
 
-    dh_config={'train_file':'../build_data/data_train',
-               'test_file':'../build_data/data_test',
-               'val_file': '../build_data/data_val'
-               }
+    dh_config = {'train_file': '../build_data/data_train',
+                 'test_file': '../build_data/data_test',
+                 'val_file': '../build_data/data_val'
+                 }
 
-    dh=data_helper(dh_config)
-
-    saver = tf.train.Saver()
-    for i in range(100000):
-        train_x,train_y=dh.next_batch(1000)
-        if i%100==0:
+    dh = data_helper(dh_config)
+    model = dota2model(config)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+        for i in range(100000):
+            train_x,train_y=dh.next_batch(1000)
             sess.run(model.train_op, feed_dict={model.x_input: train_x,
-                                                              model.y_std: train_y})
+                                                model.y_std: train_y})
+            if i%100==0:
+                val_x, val_y = dh.get_val_batch()
+                loss,model_score=sess.run([model.loss,model.y_pre], feed_dict={model.x_input: val_x,
+                                                      model.y_std: val_y})
 
-            val_x, val_y = dh.get_val_batch()
-            print(sess.run(model.loss, feed_dict={model.x_input: val_x,
-                                                  model.y_std: val_y}))
-            # saver.save(sess, 'dota2model')
-        # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
-        #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
-        #                                   model.y_std:np.array([0,1])}))
+                # print(sess.run([model.w3,model.w2,model.w1],feed_dict={model.x_input: val_x,
+                #                                       model.y_std: val_y}
+                #                ))
+                print('*******************',loss,pre(model_score,val_y))
+                # saver.save(sess, 'dota2model')
+            # print(sess.run(model.loss, feed_dict={model.x_input: np.array([[1, 2, 3, 4, 5, 6, 7,8,9,10],
+            #                                                                 [11,12,13,14,15,16,17,18,19,20]]),
+            #                                   model.y_std:np.array([0,1])}))
 
 
 
