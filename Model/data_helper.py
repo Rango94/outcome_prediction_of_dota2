@@ -12,12 +12,9 @@ class data_helper:
         with codecs.open(config['train_file'],'r',encoding='utf-8') as train_file:
             data=[]
             for line in train_file.readlines():
-                tmp=[int(i) for i in line.rstrip().split(' ')[1:]]
-                if len(tmp)!=11:
-                    continue
-                else:
-                    data.append(np.array(tmp))
-
+                line=line.rstrip().split(' ')[1:]
+                data.append([int(i) for i in line])
+                data.append([int(line[idx%10]) if idx!=15 else 0 if line[-1]=='1' else 1 for idx in range(5,16)])
             data=np.array(data)
             self.train_x=data[:,:-1]
             self.train_y=data[:,-1]
@@ -39,12 +36,6 @@ class data_helper:
             self.val_y = data[:, -1]
 
         self.start = 0
-
-
-        self.start=0
-
-
-
 
 
     def next_batch(self,size):

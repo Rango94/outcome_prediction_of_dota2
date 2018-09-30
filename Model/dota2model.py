@@ -10,6 +10,7 @@ class dota2model:
         self.MAX_GRAD_NORM=config['MAX_GRAD_NORM']
         self.LR=config['LR']
         self.attention_flag=config['attention_flag']
+        self.KEEP_PROB=config['keep_prob']
         self.build_placeholder()
         self.build_para()
         self.forward()
@@ -36,25 +37,69 @@ class dota2model:
                 self.att_b2 = tf.get_variable(name='att_b2', dtype=tf.float32, shape=[self.hidden_size * 2])
                 self.att_b3 = tf.get_variable(name='att_b3', dtype=tf.float32, shape=[self.hidden_size])
 
+
         with tf.variable_scope('output_layers'):
-            self.w1=tf.get_variable(name='w1',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
-            self.w2=tf.get_variable(name='w2',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
-            self.b1=tf.get_variable(name='b1',dtype=tf.float32,shape=[self.hidden_size*10])
-            self.b2 = tf.get_variable(name='b2',dtype= tf.float32, shape=[self.hidden_size * 10])
-            self.w3=tf.get_variable(name='w3',dtype=tf.float32,shape=[self.hidden_size*10,1])
-            self.b3=tf.get_variable(name='b3',dtype=tf.float32,shape=[1])
+            if self.attention_flag!=0:
+                self.generate_NN(10)
+            else:
+                self.generate_NN(10,2)
+
+        #     self.w1=tf.get_variable(name='w1',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
+        #     self.w2=tf.get_variable(name='w2',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
+        #     self.b1=tf.get_variable(name='b1',dtype=tf.float32,shape=[self.hidden_size*10])
+        #     self.b2 = tf.get_variable(name='b2',dtype= tf.float32, shape=[self.hidden_size * 10])
+        #     self.w3=tf.get_variable(name='w3',dtype=tf.float32,shape=[self.hidden_size*10,1])
+        #     self.b3=tf.get_variable(name='b3',dtype=tf.float32,shape=[1])
+
+
+    def generate_NN(self,layers,times=10):
+        self.output_weights=[]
+        self.output_bias=[]
+        for i in range(layers):
+            if i==0:
+                self.output_weights.append(tf.get_variable(name='w'+str(i),dtype=tf.float32,shape=[self.hidden_size*times,self.hidden_size*times]))
+                self.output_bias.append(tf.get_variable(name='b'+str(i),dtype=tf.float32,shape=[self.hidden_size*times]))
+            elif i==layers-1:
+                self.output_weights.append(tf.get_variable(name='w' + str(i), dtype=tf.float32,shape=[self.hidden_size * times, 1]))
+                self.output_bias.append(tf.get_variable(name='b' + str(i), dtype=tf.float32, shape=[1]))
+            else:
+                self.output_weights.append(tf.get_variable(name='w' + str(i), dtype=tf.float32,shape=[self.hidden_size * times, self.hidden_size * times]))
+                self.output_bias.append(tf.get_variable(name='b' + str(i), dtype=tf.float32, shape=[self.hidden_size * times]))
 
     def forward(self):
         self.x_input_embedding=tf.nn.embedding_lookup(self.embedding,self.x_input)
-
-        if self.attention_flag==1:
+        if self.attention_flag==0:
+            self.without_attention()
+        elif self.attention_flag==1:
             self.attention_1()
         elif self.attention_flag==2:
             self.attention_2()
+        idx=0
+        n=len(self.output_weights)
+        for weight,bias in zip(self.output_weights,self.output_bias):
+            if idx==0:
+                tmp = tf.nn.relu(tf.matmul(self.middle_tensor, weight) + bias)
+                tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
+            elif idx==len(self.output_weights)-1:
+                self.y_pre=tf.sigmoid(tf.matmul(tmp,weight)+bias)
+            elif idx%2==1:
+                tmp=tf.nn.tanh(tf.matmul(tmp, weight) + bias)
+                tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
+            else:
+                tmp = tf.nn.relu(tf.matmul(tmp, weight) + bias)
+                tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
+            idx+=1
 
-        tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
-        tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
-        self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
+
+        # tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
+        # tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
+        # self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
+
+    def without_attention(self):
+        radiant=tf.reduce_sum(self.x_input_embedding[:,:5,:],axis=1)
+        dire=tf.reduce_sum(self.x_input_embedding[:,5:,:],axis=1)
+        self.middle_tensor=tf.concat([radiant,dire],axis=-1)
+
 
     def attention_2(self):
         attentioned_list=[]
@@ -71,7 +116,7 @@ class dota2model:
             if i<5:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.tanh(
+                        tf.nn.relu(
                             tf.matmul(
                                 tf.nn.tanh(
                                     tf.matmul(
@@ -84,7 +129,7 @@ class dota2model:
             else:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.tanh(
+                        tf.nn.relu(
                             tf.matmul(
                                 tf.nn.tanh(
                                     tf.matmul(
@@ -94,7 +139,7 @@ class dota2model:
                                         self.attention_weight_1) + self.att_b1),
                                 self.attention_weight_2) + self.att_b2),
                         self.attention_weight_3) + self.att_b3)
-        self.attentioned_output = tf.concat(attentioned_list, 1)
+        self.middle_tensor = tf.concat(attentioned_list, 1)
 
     def attention_1(self):
         attentioned_list = []
@@ -119,7 +164,7 @@ class dota2model:
                                             tf.transpose(
                                                 tf.matmul(
                                                     self.x_input_embedding[:, i, :], self.attention_weight))
-                                            , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]), axis=2)
+                                            , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]))
                             , self.x_input_embedding[:, 5:, :]), shape=[-1, self.hidden_size]))
             else:
                 attentioned_list.append(
@@ -132,17 +177,20 @@ class dota2model:
                                             tf.transpose(
                                                 tf.matmul(
                                                     self.x_input_embedding[:, i, :], self.attention_weight))
-                                            , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]), axis=2)
+                                            , shape=[-1, self.hidden_size, 1])), shape=[-1, 1, 5]))
                             , self.x_input_embedding[:, :5, :]), shape=[-1, self.hidden_size]))
-        self.attentioned_output = tf.concat(attentioned_list, 1)
+        self.middle_tensor = tf.concat(attentioned_list, 1)
 
     def computer_loss(self):
         y_std = tf.reshape(self.y_std, shape=[-1,1])
         y_pre = tf.reshape(self.y_pre, shape=[-1,1])
 
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w1))
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w2))
-        tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.1)(self.w3))
+        for weight in self.output_weights:
+            tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.02)(weight))
+
+
+            # tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w2))
+            # tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w3))
 
         tf.add_to_collection("losses",
                              -tf.reduce_mean((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
@@ -176,12 +224,37 @@ def pre(pre_socre,truth):
             sum=sum+1
     return sum/float(len(pre_socre))
 
+
+def auc(pre,truth):
+    pre = np.reshape(pre, [-1])
+    truth = np.reshape(truth, [-1])
+    pre,truth=zip(*sorted(zip(pre,truth),key=lambda x:x[0]))
+    x=0
+    y=0
+    kkk=sum(truth)
+
+    auc=0
+    for idx in range(len(pre)):
+        if idx<30:
+            print(pre[idx],truth[idx])
+
+        x_=float(sum(truth[:idx]))/float(kkk)
+        y_=float((idx-sum(truth[:idx])))/float(kkk)
+        auc+=((y_+y)*(x_-x))/float(2)
+        x=x_
+        y=y_
+    return auc
+
+
+
+
 if __name__=='__main__':
 
     config={'hidden_size':256,
             'MAX_GRAD_NORM':5,
             'LR':0.3,
-            'attention_flag':2}
+            'attention_flag':0,
+            'keep_prob':0.8}
 
 
     dh_config = {'train_file': '../build_data/data_train',
