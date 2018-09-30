@@ -37,20 +37,11 @@ class dota2model:
                 self.att_b2 = tf.get_variable(name='att_b2', dtype=tf.float32, shape=[self.hidden_size * 2])
                 self.att_b3 = tf.get_variable(name='att_b3', dtype=tf.float32, shape=[self.hidden_size])
 
-
         with tf.variable_scope('output_layers'):
             if self.attention_flag!=0:
-                self.generate_NN(10)
+                self.generate_NN(4)
             else:
-                self.generate_NN(10,2)
-
-        #     self.w1=tf.get_variable(name='w1',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
-        #     self.w2=tf.get_variable(name='w2',dtype=tf.float32,shape=[self.hidden_size*10,self.hidden_size*10])
-        #     self.b1=tf.get_variable(name='b1',dtype=tf.float32,shape=[self.hidden_size*10])
-        #     self.b2 = tf.get_variable(name='b2',dtype= tf.float32, shape=[self.hidden_size * 10])
-        #     self.w3=tf.get_variable(name='w3',dtype=tf.float32,shape=[self.hidden_size*10,1])
-        #     self.b3=tf.get_variable(name='b3',dtype=tf.float32,shape=[1])
-
+                self.generate_NN(5,2)
 
     def generate_NN(self,layers,times=10):
         self.output_weights=[]
@@ -79,7 +70,7 @@ class dota2model:
 
         for idx,(weight,bias) in enumerate(zip(self.output_weights,self.output_bias)):
             if idx==0:
-                tmp = tf.nn.relu(tf.matmul(self.middle_tensor, weight) + bias)
+                tmp = tf.nn.elu(tf.matmul(self.middle_tensor, weight) + bias)
                 tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
             elif idx==len(self.output_weights)-1:
                 self.y_pre=tf.sigmoid(tf.matmul(tmp,weight)+bias)
@@ -87,13 +78,8 @@ class dota2model:
                 tmp=tf.nn.tanh(tf.matmul(tmp, weight) + bias)
                 tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
             else:
-                tmp = tf.nn.relu(tf.matmul(tmp, weight) + bias)
+                tmp = tf.nn.elu(tf.matmul(tmp, weight) + bias)
                 tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
-
-
-        # tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
-        # tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
-        # self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
 
     #加和拼接
     def without_attention(self):
@@ -117,7 +103,7 @@ class dota2model:
             if i<5:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.relu(
+                        tf.nn.elu(
                             tf.matmul(
                                 tf.nn.tanh(
                                     tf.matmul(
@@ -130,7 +116,7 @@ class dota2model:
             else:
                 attentioned_list.append(
                     tf.matmul(
-                        tf.nn.relu(
+                        tf.nn.elu(
                             tf.matmul(
                                 tf.nn.tanh(
                                     tf.matmul(
@@ -189,10 +175,6 @@ class dota2model:
         for weight in self.output_weights:
             tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.02)(weight))
 
-
-            # tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w2))
-            # tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.3)(self.w3))
-
         tf.add_to_collection("losses",
                              -tf.reduce_mean((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
                                              (1.- y_std)* tf.log(tf.clip_by_value(1. - y_pre, 1e-10, 1.0)))))
@@ -206,10 +188,6 @@ class dota2model:
         # grads, _ = tf.clip_by_global_norm(grads, self.MAX_GRAD_NORM)
         opt = tf.train.AdadeltaOptimizer(learning_rate=self.LR)
         self.train_op = opt.apply_gradients(zip(grads, trainable_variables))
-
-
-
-
 
 def pre(pre_socre,truth):
     pre_socre=np.reshape(pre_socre,[-1])
@@ -253,8 +231,8 @@ if __name__=='__main__':
 
     config={'hidden_size':256,
             'MAX_GRAD_NORM':5,
-            'LR':0.3,
-            'attention_flag':0,
+            'LR':0.2,
+            'attention_flag':2,
             'keep_prob':0.8}
 
 
