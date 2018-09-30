@@ -74,9 +74,10 @@ class dota2model:
             self.attention_1()
         elif self.attention_flag==2:
             self.attention_2()
-        idx=0
+
         n=len(self.output_weights)
-        for weight,bias in zip(self.output_weights,self.output_bias):
+
+        for idx,(weight,bias) in enumerate(zip(self.output_weights,self.output_bias)):
             if idx==0:
                 tmp = tf.nn.relu(tf.matmul(self.middle_tensor, weight) + bias)
                 tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
@@ -88,13 +89,13 @@ class dota2model:
             else:
                 tmp = tf.nn.relu(tf.matmul(tmp, weight) + bias)
                 tmp = tf.nn.dropout(tmp, 1-((1-self.KEEP_PROB)/float(n)))
-            idx+=1
 
 
         # tmp1=tf.nn.relu(tf.matmul(self.attentioned_output,self.w1)+self.b1)
         # tmp2=tf.nn.relu(tf.matmul(tmp1,self.w2)+self.b2)
         # self.y_pre=tf.sigmoid(tf.matmul(tmp2,self.w3)+self.b3)
 
+    #加和拼接
     def without_attention(self):
         radiant=tf.reduce_sum(self.x_input_embedding[:,:5,:],axis=1)
         dire=tf.reduce_sum(self.x_input_embedding[:,5:,:],axis=1)
