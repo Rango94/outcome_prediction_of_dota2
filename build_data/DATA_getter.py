@@ -113,10 +113,11 @@ class data_getter:
                 if match['lobby_type'] not in [0,7,2]:
                     print("\033[0;31m%s\033[0m" % (str(match_id)+':lobby_type='+str(match['lobby_type'])))
                     continue
-                if match['skill'] != 3:
-                    print("\033[0;31m%s\033[0m" % (str(match_id) + ':skill=' + str(match['skill'])))
-                    continue
+                # if match['skill'] != 3:
+                #     print("\033[0;31m%s\033[0m" % (str(match_id) + ':skill=' + str(match['skill'])))
+                #     continue
             except:
+                print("\033[0;31m%s\033[0m" % ('maybe key error'))
                 continue
             players=match['players']
             leave_flag=False
