@@ -13,6 +13,8 @@ class data_helper:
             data=[]
             for line in train_file.readlines():
                 line=line.rstrip().split(' ')[1:]
+                if len(line)!=11:
+                    continue
                 data.append([int(i) for i in line])
                 data.append([int(line[idx%10]) if idx!=15 else 0 if line[-1]=='1' else 1 for idx in range(5,16)])
             data=np.array(data)
@@ -21,8 +23,11 @@ class data_helper:
 
         with codecs.open(config['test_file'],'r',encoding='utf-8') as test_file:
             data = []
-            for line in test_file.readlines():
-                data.append([int(i) for i in line.rstrip().split(' ')[1:]])
+            for line in test_file.readlines(): 
+                line=line.rstrip().split(' ')[1:]
+                if len(line)!=11:
+                    continue
+                data.append([int(i) for i in line])
             data = np.array(data)
             self.test_x = data[:, :-1]
             self.test_y = data[:, -1]
@@ -30,7 +35,10 @@ class data_helper:
         with codecs.open(config['val_file'], 'r', encoding='utf-8') as val_file:
             data = []
             for line in val_file.readlines():
-                data.append([int(i) for i in line.rstrip().split(' ')[1:]])
+                line=line.rstrip().split(' ')[1:]
+                if len(line)!=11:
+                    continue
+                data.append([int(i) for i in line])
             data = np.array(data)
             self.val_x = data[:, :-1]
             self.val_y = data[:, -1]
