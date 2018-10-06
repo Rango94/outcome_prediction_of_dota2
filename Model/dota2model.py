@@ -2,6 +2,7 @@
 import tensorflow as tf
 from data_helper import data_helper
 from functions import *
+import sys
 import numpy as np
 class dota2model:
     def __init__(self,config):
@@ -173,7 +174,7 @@ class dota2model:
         y_pre = tf.reshape(self.y_pre, shape=[-1,1])
 
         for weight in self.output_weights:
-            tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.02)(weight))
+            tf.add_to_collection("losses", tf.contrib.layers.l2_regularizer(0.2)(weight))
 
         tf.add_to_collection("losses",
                              -tf.reduce_mean((y_std * tf.log(tf.clip_by_value(y_pre, 1e-10, 1.0)) +
@@ -234,7 +235,8 @@ if __name__=='__main__':
             'LR':0.2,
             'attention_flag':2,
             'keep_prob':0.8}
-
+    if len(sys.argv)==2:
+        config['attention_flag']=int(sys.argv[1])
 
     dh_config = {'train_file': '../build_data/data_train',
                  'test_file': '../build_data/data_test',

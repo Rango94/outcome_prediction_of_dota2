@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 #懒姐：A62B39CB8B51A0494A8E08A2DC69E0DB
-api=dota2api.Initialise('A62B39CB8B51A0494A8E08A2DC69E0DB')
+api=dota2api.Initialise('EFB29011FFD46B347C9E9DEE8A1F4252')
 # api=dota2api.Initialise('EFB29011FFD46B347C9E9DEE8A1F4252')
 
 # his=api.get_match_history(account_id=168028715,start_at_match_id=4059082885,matches_requested=100)
@@ -160,9 +160,13 @@ class data_getter:
                     print('match error')
                     pass
 
+
+
+
+
 # get_teammate(168028715,5000)
 if __name__=='__main__':
-    data_getter=data_getter('US')
+    data_getter=data_getter('EU')
     data_getter.get()
 
 
